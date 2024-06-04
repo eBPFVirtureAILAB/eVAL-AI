@@ -1,26 +1,10 @@
-from langchain_community.chat_models import ChatOllama
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from langserve import add_routes
 
+from langchain_community.chat_models import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-
-
-llm = ChatOllama(model="llama3:latest")
-prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are a helpful, professional assistant named namebot. Introduce yourself first, and answer the questions. answer me in english no matter what. "),
-    ("user", "{input}")
-])
-chain = prompt | llm | StrOutputParser()
-# d = chain.invoke({"input": "What is stock?"})
-# print(d)
-
-
-
-for token in chain.stream(
-    {"input": "What is stock?"}
-):
-    print(token, end="")
 
 app = FastAPI(
     title="LangChain Server",
@@ -28,6 +12,18 @@ app = FastAPI(
     description="A simple API server using LangChain",
 )
 
+@app.get("/")
+async def redirect_root_to_docs():
+    return RedirectResponse("/docs")
+
+llm = ChatOllama(model="llama3:latest")
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are a helpful, professional assistant named namebot. Introduce yourself first, and answer the questions. answer me in english no matter what. "),
+    ("user", "{input}")
+])
+chain = prompt | llm | StrOutputParser()
+
+# Edit this to add the chain you want to add
 add_routes(
     app,
     chain,
@@ -37,5 +33,4 @@ add_routes(
 if __name__ == "__main__":
     import uvicorn
 
-    # uvicorn: ASGI(Asynchronous Server Gateway Interface) 서버를 구현한 비동기 경량 웹 서버
     uvicorn.run(app, host="localhost", port=8000)
