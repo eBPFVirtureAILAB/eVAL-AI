@@ -78,9 +78,12 @@ We also expose port 8080 with the `-p 8080:8080` option.
 docker run -e OPENAI_API_KEY=$OPENAI_API_KEY -p 8080:8080 my-langserve-app
 ```
 
-
+### run local
 ```shell
 poetry run langchain serve --port=8100
 ```
 
-
+### docker
+```shell
+docker build --tag ebpf-llama:0.1 .
+```
