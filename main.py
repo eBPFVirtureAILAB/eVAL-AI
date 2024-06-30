@@ -4,38 +4,55 @@ from langserve import add_routes
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain.document_loaders import PyMuPDFLoader
+from langchain.vectorstores import Chroma
+from sentence_transformers import SentenceTransformer
 
+# PDF 파일에서 문서를 로드합니다.
+pdf_loader = PyMuPDFLoader("your_document.pdf")
+documents = pdf_loader.load()
 
+# Llama 임베딩을 사용하여 문서를 임베딩합니다.
+class LlamaEmbeddings:
+    def __init__(self, model_name="sentence-transformers/all-MiniLM-L6-v2"):
+        self.model = SentenceTransformer(model_name)
+
+    def embed(self, texts):
+        return self.model.encode(texts, convert_to_tensor=True)
+
+embedding_model = LlamaEmbeddings()
+persist_directory = "chroma_db"  # 데이터를 저장할 디렉토리
+
+# ChromaDB에 문서를 임베딩합니다.
+vectorstore = Chroma(embedding_function=embedding_model.embed, persist_directory=persist_directory)
+vectorstore.add_documents(documents)
+
+# 데이터를 디스크에 저장합니다.
+vectorstore.persist()
+
+# RAG 체인을 생성합니다.
 llm = ChatOllama(model="llama3:latest")
 prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are a helpful, professional assistant named namebot. Introduce yourself first, and answer the questions. answer me in english no matter what. "),
+    ("system", "You are a helpful, professional assistant named namebot. Introduce yourself first, and answer the questions. Answer me in English no matter what."),
     ("user", "{input}")
 ])
-chain = prompt | llm | StrOutputParser()
-# d = chain.invoke({"input": "What is stock?"})
-# print(d)
+chain = ConversationalRetrievalChain.from_llm_and_vectorstore(
+    llm=llm,
+    vectorstore=vectorstore,
+    prompt=prompt
+)
 
+# FastAPI 앱을 생성하고 라우트를 추가합니다.
+app = FastAPI()
+add_routes(app, chain)
 
+@app.post("/query")
+async def query(input_text: str):
+    result = chain.invoke({"input": input_text})
+    return {"response": result}
 
+# 샘플 쿼리를 실행합니다.
 for token in chain.stream(
     {"input": "What is stock?"}
 ):
     print(token, end="")
-
-app = FastAPI(
-    title="LangChain Server",
-    version="1.0",
-    description="A simple API server using LangChain",
-)
-
-add_routes(
-    app,
-    chain,
-    path="/chain"
-)
-
-if __name__ == "__main__":
-    import uvicorn
-
-    # uvicorn: ASGI(Asynchronous Server Gateway Interface) 서버를 구현한 비동기 경량 웹 서버
-    uvicorn.run(app, host="localhost", port=8000)
