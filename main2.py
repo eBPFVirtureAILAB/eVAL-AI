@@ -32,7 +32,7 @@ def rag_chain(url, question):
     response = ollama.chat(model='llama3', 
                            messages=[
                                 {"role": "system",
-                                 "content": "You are a helpful assistant. Check the url content and answer the question. Translate the answer in Korean with emoji."
+                                 "content": "You are a1123 helpful assistant. Check the url content and answer the question. Translate the answer in Korean with emoji."
                                 },
                                 {"role": "user", "content": formatted_prompt}])
     return response['message']['content']
